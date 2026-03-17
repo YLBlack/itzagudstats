@@ -1,12 +1,12 @@
 // ==UserScript==
 // @name        【月白】Itzagud Stats
 // @description A tool to handle infos on Itzagud.
-// @author      星空優月 & 💟 めぐ 🍫 みん (Megumin 💥) 💟
+// @author      星空優月 & 💟 めぐ 🍫 みん (Megumin 💥) 💟 | ONYX - added toggle button
 // @iconURL     https://www.itzagud.net/apple-touch-icon.png
 // @match       *://www.itzagud.net/*
 // @grant       none
 // @run-at      document-start
-// @version     0.2
+// @version     0.3
 // ==/UserScript==
 
 (function () {
@@ -19,6 +19,12 @@
             @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&display=swap');
             :root {--itz-bg: rgba(9, 9, 11, 0.85);--itz-border: rgba(63, 63, 70, 0.4);--itz-glass: blur(12px);--itz-accent: #a78bfa;--itz-points: #fbbf24;--itz-clams: #ef4444;--itz-luck: #22c55e;--itz-timer: #38bdf8;--itz-font: 'Rajdhani', sans-serif;}
             #itzagud-widget {position: fixed;top: 50%;right: 20px;transform: translateY(-50%);z-index: 10000;width: 280px;font-family: var(--itz-font);background: var(--itz-bg);backdrop-filter: var(--itz-glass);-webkit-backdrop-filter: var(--itz-glass);border: 1px solid var(--itz-border);border-radius: 16px;padding: 16px;box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 0 20px rgba(167, 139, 250, 0.1);color: #f4f4f5;transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);}
+            #itzagud-widget.itz-hidden {background: transparent !important;backdrop-filter: none !important;-webkit-backdrop-filter: none !important;border-color: transparent !important;box-shadow: none !important;}
+            #itzagud-widget.itz-hidden #itz-widget-content {display: none;}
+            #itzagud-widget.itz-hidden .itz-title-label {display: none;}
+            #itzagud-widget.itz-hidden .itz-title-icon {display: none;}
+            #itz-toggle-btn {margin-left: auto;background: rgba(167,139,250,0.12);border: 1px solid rgba(167,139,250,0.3);color: var(--itz-accent);border-radius: 8px;padding: 3px 8px;font-family: var(--itz-font);font-size: 13px;font-weight: 700;cursor: pointer;transition: background 0.2s, color 0.2s;line-height: 1.5;user-select: none;}
+            #itz-toggle-btn:hover {background: rgba(167,139,250,0.28);}
             .itz-section {margin-bottom: 16px;}
             .itz-section:last-child {margin-bottom: 0;}
             .itz-user-card {background: rgba(39, 39, 42, 0.5);border: 1px solid var(--itz-border);border-radius: 12px;padding: 12px;display: flex;flex-direction: column;gap: 8px;}
@@ -189,6 +195,7 @@
 
         titleEl.addEventListener("pointerdown", (e) => {
             if (e.button !== undefined && e.button !== 0) return;
+            if (e.target.closest && e.target.closest('#itz-toggle-btn')) return;
             dragging = true;
             const r = widgetEl.getBoundingClientRect();
             ox = e.clientX - r.left;
@@ -225,12 +232,32 @@
         const widget = document.createElement("div");
         widget.id = "itzagud-widget";
 
+        // Restore hidden state from localStorage
+        let isHidden = false;
+        try { isHidden = localStorage.getItem('itz_widget_hidden') === '1'; } catch(e) {}
+        if (isHidden) widget.classList.add('itz-hidden');
+
         const titleRow = document.createElement("div");
         titleRow.style = "display:flex; align-items:center; gap:8px; margin-bottom:16px; border-bottom:1px solid var(--itz-border); padding-bottom:10px;";
+
+        // Toggle button
+        const toggleBtn = document.createElement("button");
+        toggleBtn.id = "itz-toggle-btn";
+        toggleBtn.title = "Toggle widget visibility";
+        toggleBtn.textContent = isHidden ? "👁 Show" : "👁 Hide";
+
+        toggleBtn.addEventListener("click", (e) => {
+            e.stopPropagation(); // prevent drag triggering
+            const hidden = widget.classList.toggle('itz-hidden');
+            toggleBtn.textContent = hidden ? "👁 Show" : "👁 Hide";
+            try { localStorage.setItem('itz_widget_hidden', hidden ? '1' : '0'); } catch(e) {}
+        });
+
         titleRow.innerHTML = `
-            <img src="https://www.itzagud.net/favicon.ico" style="width:20px; height:20px;">
-            <span style="font-weight:700; font-size:16px; letter-spacing:0.5px; color:var(--itz-accent);">ITZAGUD STATS</span>
+            <img class="itz-title-icon" src="https://www.itzagud.net/favicon.ico" style="width:20px; height:20px;">
+            <span class="itz-title-label" style="font-weight:700; font-size:16px; letter-spacing:0.5px; color:var(--itz-accent);">ITZAGUD STATS</span>
         `;
+        titleRow.appendChild(toggleBtn);
         mkDrag(titleRow, widget);
         widget.appendChild(titleRow);
 
@@ -248,6 +275,9 @@
             return wrap;
         };
 
+        const content = document.createElement("div");
+        content.id = "itz-widget-content";
+
         const userStatsDiv = document.createElement("div");
         userStatsDiv.id = "itz-user-stats";
         userStatsDiv.className = "itz-section";
@@ -257,15 +287,15 @@
         taskSection.className = "itz-section";
         taskSection.appendChild(mkPB("itz-task-bar", "Tasks Status"));
 
-
         const slotGiveawaysDiv = document.createElement("div");
         slotGiveawaysDiv.id = "itz-slot-giveaways";
         slotGiveawaysDiv.className = "itz-section";
         slotGiveawaysDiv.innerHTML = `<div style="font-size:13px;color:#a1a1aa;text-align:center;">Loading giveaways...</div>`;
 
-        widget.appendChild(userStatsDiv);
-        widget.appendChild(taskSection);
-        widget.appendChild(slotGiveawaysDiv);
+        content.appendChild(userStatsDiv);
+        content.appendChild(taskSection);
+        content.appendChild(slotGiveawaysDiv);
+        widget.appendChild(content);
         document.body.appendChild(widget);
     }
 
