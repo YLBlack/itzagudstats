@@ -1,4 +1,4 @@
-# 💟 Itzagud Stats (MeguScript)
+# 💟 Itzagud Stats (ONYXScript)
 
 A tool to handle infos on Itzagud.
 
